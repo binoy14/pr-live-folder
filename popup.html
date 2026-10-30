@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--fg);
+      width: 400px;
+      margin: 0;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 16px; margin: 0 0 4px; }
+    #status { color: var(--muted); font-size: 12px; margin-bottom: 14px; white-space: pre-line; }
+    #status.error { color: var(--error); }
+    .actions { display: flex; gap: 8px; margin-bottom: 16px; }
+    button {
+      flex: 1;
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #prList { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+    #prList li { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    #prList li:first-child { padding-top: 0; }
+    #prList li:last-child { border-bottom: 0; padding-bottom: 0; }
+    .pr-title {
+      color: var(--fg);
+      text-decoration: none;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .pr-title:hover { color: var(--accent); }
+    .pr-title:focus-visible { outline-offset: -2px; }
+    .pr-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 10px; margin-top: 7px; }
+    .repo { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+    .pr-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+    .approval, .draft { padding: 2px 7px; border-radius: 5px; background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .approval.approved { color: var(--success); background: var(--success-bg); }
+    .approval.changes-requested { color: var(--error); background: var(--error-bg); }
+    #approvalNotice { color: var(--muted); font-size: 11px; margin: 0 0 10px; }
+    #approvalNotice:empty { display: none; }
+  </style>
+</head>
+<body>
+  <h1>GitHub PR Live Folder</h1>
+  <div id="status">Loading…</div>
+  <div class="actions">
+    <button id="sync">Sync now</button>
+    <button id="settings" class="secondary">Settings</button>
+  </div>
+  <p id="approvalNotice" role="status"></p>
+  <ul id="prList"></ul>
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
