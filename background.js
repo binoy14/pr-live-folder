@@ -13,12 +13,13 @@ const DEFAULT_STATE = {
   lastSync: null,
   lastError: null,
   signedIn: null, // true / false / unknown
-  isJsonApi: null, // true = /pulls serves the JSON payload
   prCount: 0,
 };
 
 const ALARM_NAME = "prs-sync";
 const PULLS_URL = "https://github.com/pulls";
+// Direct review requests only — never team requests.
+const PR_SEARCH_FILTERS = ["user-review-requested:@me", "author:@me"];
 
 // Guard so our own tab moves don't retrigger the onMoved listener.
 let repositioning = 0;
@@ -75,19 +76,10 @@ async function ghFetch(url) {
   return { status: res.status, text: await res.text(), url: res.url };
 }
 
-function searchFilters(cfg) {
-  // Direct review requests only — never team requests.
-  const filters = ["user-review-requested:@me"];
-  if (cfg.authorMe) filters.push("author:@me");
-  if (cfg.assignedMe) filters.push("assignee:@me");
-  return filters;
-}
-
 function buildQuery(cfg, filter) {
-  const filters = searchFilters(cfg);
   const terms = [
     "is:pr", "is:open", "archived:false", "sort:updated-desc",
-    filter || (filters.length === 1 ? filters[0] : `(${filters.join(" OR ")})`),
+    filter || `(${PR_SEARCH_FILTERS.join(" OR ")})`,
   ];
   for (const repo of cfg.excludes) terms.push(`-repo:${repo}`);
   if (cfg.maxAgeDays > 0) {
@@ -134,13 +126,10 @@ async function enrichWithReviewStatus(prs, cfg) {
       meta[pr.url] = { ...previous[pr.url], ...presentation };
       continue;
     }
-    const detail = approval === "approved" ? "Approved"
-      : approval === "changes-requested" ? "Changes requested" : "Not approved";
     meta[pr.url] = {
       ...presentation,
       approval,
       emoji: pr.isDraft ? "🚧" : approval === "approved" ? "✅" : approval === "changes-requested" ? "⚠️" : "👀",
-      detail: pr.isDraft ? `Draft · ${detail}` : detail,
       fetchedAt,
     };
   }
@@ -226,13 +215,12 @@ async function fetchPullRequestPage(query, detectFormatOnly = false) {
 }
 
 async function fetchPullRequests(cfg, extraFilter = "") {
-  const filters = searchFilters(cfg);
   const query = (filter) => [buildQuery(cfg, filter), extraFilter].filter(Boolean).join(" ");
-  let { items, isJsonApi } = await fetchPullRequestPage(query(), filters.length > 1);
-  if (!isJsonApi && filters.length > 1) {
+  let { items, isJsonApi } = await fetchPullRequestPage(query(), true);
+  if (!isJsonApi) {
     // The legacy /pulls UI doesn't support OR; merge its individual searches.
     items = [];
-    for (const filter of filters) {
+    for (const filter of PR_SEARCH_FILTERS) {
       const page = await fetchPullRequestPage(query(filter));
       items.push(...page.items);
     }
@@ -250,7 +238,7 @@ async function fetchPullRequests(cfg, extraFilter = "") {
       isDraft: Boolean(item.isDraft),
     });
   }
-  return { items: [...unique.values()], isJsonApi };
+  return { items: [...unique.values()] };
 }
 
 function sync() {
@@ -270,7 +258,7 @@ function sync() {
 async function syncOnce() {
   try {
     const cfg = await getConfig();
-    const { items, isJsonApi } = await fetchPullRequests(cfg);
+    const { items } = await fetchPullRequests(cfg);
     await rememberRepositories(items.map((pr) => pr.repo));
     const staleCutoff = cfg.maxAgeDays > 0 ? Date.now() - cfg.maxAgeDays * 86400000 : 0;
 
@@ -282,7 +270,7 @@ async function syncOnce() {
     });
 
     await reconcileTabs(filtered, cfg);
-    await saveState({ signedIn: true, isJsonApi, lastError: null, lastSync: Date.now(), prCount: filtered.length });
+    await saveState({ signedIn: true, lastError: null, lastSync: Date.now(), prCount: filtered.length });
     await setBadge(filtered.length ? String(filtered.length) : "");
     try {
       await enrichWithReviewStatus(filtered, cfg);

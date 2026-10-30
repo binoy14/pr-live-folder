@@ -2,21 +2,10 @@ const $ = (id) => document.getElementById(id);
 let prListVersion = 0;
 
 function approvalStatus(info) {
-  let decision = info.approval ?? info.reviewDecision;
-  // Support metadata saved before reviewDecision was stored separately.
-  if (decision === undefined) {
-    if (info.detail?.startsWith("Approved")) decision = "APPROVED";
-    else if (info.detail?.startsWith("Changes requested")) decision = "CHANGES_REQUESTED";
-    else if (info.detail?.startsWith("Review required")) decision = "REVIEW_REQUIRED";
-  }
-  switch (decision) {
-    case "approved":
-    case "APPROVED": return { text: "Approved", className: "approved" };
-    case "changes-requested":
-    case "CHANGES_REQUESTED": return { text: "Changes requested", className: "changes-requested" };
-    case "not-approved":
-    case "REVIEW_REQUIRED": return { text: "Not approved", className: "not-approved" };
-    case null: return { text: "No approval decision", className: "unknown" };
+  switch (info.approval) {
+    case "approved": return { text: "Approved", className: "approved" };
+    case "changes-requested": return { text: "Changes requested", className: "changes-requested" };
+    case "not-approved": return { text: "Not approved", className: "not-approved" };
     default: return { text: "Approval unavailable", className: "unknown" };
   }
 }
@@ -79,7 +68,7 @@ async function renderPrList() {
     repo.textContent = `${repoName} #${number}`;
     const badges = document.createElement("span");
     badges.className = "pr-badges";
-    if (info.isDraft || info.detail?.startsWith("Draft")) {
+    if (info.isDraft) {
       const draft = document.createElement("span");
       draft.className = "draft";
       draft.textContent = "Draft";

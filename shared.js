@@ -1,9 +1,4 @@
 // Loaded by the worker, extension pages, and content script.
-const GITHUB_DEFAULTS = {
-  authorMe: true,
-  assignedMe: false,
-};
-
 const SYNC_DEFAULTS = {
   maxAgeDays: 30,
   pollMinutes: 2,
@@ -13,7 +8,6 @@ const SYNC_DEFAULTS = {
 };
 
 const DEFAULT_CONFIG = {
-  ...GITHUB_DEFAULTS,
   repoExcludes: "",
   groupTitle: "Pull Requests",
   groupColor: "blue",
@@ -36,7 +30,7 @@ function repositoryNames(values) {
 
 async function getConfig() {
   const { config } = await chrome.storage.local.get("config");
-  const cfg = { ...DEFAULT_CONFIG, ...(config || {}), ...GITHUB_DEFAULTS, ...SYNC_DEFAULTS };
+  const cfg = { ...DEFAULT_CONFIG, ...(config || {}), ...SYNC_DEFAULTS };
   cfg.excludes = repositoryNames((cfg.repoExcludes || "").split("\n"));
   return cfg;
 }
