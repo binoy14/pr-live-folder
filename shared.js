@@ -15,7 +15,7 @@ const SYNC_DEFAULTS = {
 const DEFAULT_CONFIG = {
   ...GITHUB_DEFAULTS,
   repoExcludes: "",
-  groupTitle: "GitHub PRs",
+  groupTitle: "Pull Requests",
   groupColor: "blue",
   collapsed: true, // applied only when the group is created
   pinToTop: true,

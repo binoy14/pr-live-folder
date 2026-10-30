@@ -1,10 +1,18 @@
 # GitHub PR Live Folder (Chrome extension)
 
-A proof-of-concept Manifest V3 extension that keeps a **collapsible tab group** in sync with your
-open GitHub pull requests — Arc Live Folder style.
+An experimental, open-source Manifest V3 extension that keeps a collapsible tab group in sync
+with your open GitHub pull requests, inspired by Arc's Live Folders. Released under the
+[MIT license](LICENSE).
 
-**No token, no OAuth, no setup.** It reuses your existing github.com browser session, exactly the
-way Arc and Zen Browser's live folders do.
+It reuses your existing github.com browser session, so you don't need a personal access token
+or OAuth setup.
+
+> **Experimental: expect bugs and potentially high memory use.** This is an approximation of
+> Arc's Live Folders using Chrome tab groups. The full Arc experience is not available through
+> this extension. Each PR opens as a real tab, which can consume substantial memory when many
+> PRs load. The extension tries to discard inactive tabs after they finish loading, but that
+> does not prevent the initial loading cost or guarantee low memory use. Collapsing the group
+> only hides its tabs. Use it as an experiment, and disable it if it makes Chrome sluggish.
 
 ## How it works
 
@@ -39,13 +47,38 @@ survives browser restarts and extension updates.
 
 ## Setup
 
-1. Make sure you're signed in to [github.com](https://github.com) in this browser.
-2. Load the extension:
+Requires Chrome 116 or later. No build step or dependency installation is needed.
+
+1. Clone this repository, or download and extract its ZIP from GitHub:
+
+   ```sh
+   git clone https://github.com/binoy14/pull-request-live-extension.git
+   cd pull-request-live-extension
+   ```
+
+2. Make sure you're signed in to [github.com](https://github.com) in the Chrome profile where
+   you'll load the extension.
+3. Load the extension:
    - Open `chrome://extensions`
    - Enable **Developer mode** (top-right toggle)
-   - Click **Load unpacked** and select this directory.
-3. Click the extension icon → **Settings** → choose repository exclusions and folder style → **Save**.
-4. A collapsed "GitHub PRs" tab group appears in your active window.
+   - Click **Load unpacked** and select the directory containing `manifest.json`.
+4. Click the extension icon → **Settings** → choose repository exclusions and folder style → **Save**.
+5. Click **Sync now**. If matching PRs are found, a collapsed "Pull Requests" tab group appears
+   in your active window. Expand it to open a PR, or use the extension popup to see its status.
+
+The extension manages tabs inside this group. It can close PR tabs when they close, merge,
+fall outside the 30-day update window, or exceed the 30-tab limit. Avoid using managed PR tabs
+for unfinished work you need to keep open.
+
+### Update or disable
+
+To update a cloned copy, run `git pull` in the repository, then open `chrome://extensions` and
+click the extension's reload button. If you downloaded a ZIP, replace the extracted files with
+the updated copy before reloading.
+
+To stop automatic syncing and tab management, switch the extension off in `chrome://extensions`.
+Choose **Remove** there to uninstall it. Closing the tab group alone does not stop syncing;
+the extension can recreate it on the next sync.
 
 ## Pin to top
 
@@ -80,6 +113,9 @@ httpOnly ones.
 
 ## Notes and limitations
 
+- **Experimental status**: behavior may change or break. This project does not promise the
+  same interaction or memory efficiency as Arc's native Live Folders. The built-in tab limit
+  and discarding reduce resource use, but many PR tabs loading together can still be expensive.
 - **Unofficial interface**: `payload.pullsDashboardSurfaceContentRoute` is not a documented API —
   GitHub could change its shape (Zen has had to fix this in the past). The HTML fallback is a
   partial safety net.
@@ -99,3 +135,14 @@ httpOnly ones.
   If enrichment fails, PR syncing continues; the popup identifies
   unavailable approval data or saved results that could not be refreshed.
 - **GitHub Enterprise**: self-hosted GHE instances are not supported (matches Arc's limitation).
+
+## Contributing
+
+Bug reports and pull requests are welcome. For bug reports, include your Chrome version,
+steps to reproduce, and any relevant errors from the extension's service worker console
+(`chrome://extensions` → this extension → **service worker**). Remove private repository names,
+PR titles, session information, and other sensitive data before sharing logs or screenshots.
+
+## License
+
+[MIT](LICENSE). Copyright (c) 2026 Binoy Patel. Provided as-is, without warranty.
