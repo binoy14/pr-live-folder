@@ -15,14 +15,14 @@ directly as an unpacked extension; `manifest.json` requires Chrome 116 or later.
 
 - `background.js`: service worker; GitHub fetching, response validation, review
   enrichment, sync scheduling, repository discovery, and tab reconciliation.
-- `shared.js`: defaults, config loading, repository and PR URL normalization,
+- `shared.js`: defaults, config loading, repository/organization and PR URL normalization,
   and managed-group lookup. Loaded with `importScripts` in the worker and before
   page/content scripts. Keep it usable in all those contexts; avoid DOM access.
 - `offscreen.html` / `offscreen.js`: DOMParser-based fallback for GitHub HTML.
   Service workers have no DOM; keep HTML parsing in the offscreen document.
 - `content-script.js`: updates GitHub PR tab-title status prefixes and handles
   GitHub title changes during SPA navigation.
-- `options.html` / `options.js`: repository exclusions and group appearance.
+- `options.html` / `options.js`: repository and organization exclusions, group appearance.
 - `popup.html` / `popup.js`: sync status, managed PR list, approval badges, and
   manual sync. `theme.css` supplies shared styles for the extension pages.
 - `scripts/make-icons.py`: generates the committed `icons/*.png` using only the
@@ -34,6 +34,10 @@ directly as an unpacked extension; `manifest.json` requires Chrome 116 or later.
   self-hosted GitHub Enterprise is outside the current scope.
 - Include authored PRs and direct review requests (`user-review-requested:@me`).
   Team review requests are intentionally excluded.
+- Hide PRs the signed-in user already approved (`reviewed-by:@me review:approved`).
+  A failed lookup must keep existing tabs.
+- Exclude repositories and organizations (`-repo:owner/repo`, `-org:owner`). An excluded
+  organization covers its repositories, so don't store or query redundant `-repo` terms.
 - Treat a recognized empty response separately from a failed or unrecognized
   response. Fetch, authentication, and parsing failures must leave existing tabs
   in place. Review-enrichment failures must not stop PR discovery and syncing.

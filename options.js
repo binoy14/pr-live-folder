@@ -2,10 +2,37 @@ const $ = (id) => document.getElementById(id);
 
 const FIELDS = ["groupTitle", "groupColor", "collapsed", "pinToTop"];
 let excludedRepos = new Set();
+let excludedOrgs = new Set();
 let knownRepos = [];
 
-function renderRepositories(repos) {
-  knownRepos = repositoryNames([...knownRepos, ...repos, ...excludedRepos]);
+function renderOrganizations() {
+  const list = $("orgList");
+  const orgs = ownerNames([...knownRepos.map(repoOwner), ...excludedOrgs]);
+  list.replaceChildren();
+  if (!orgs.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint";
+    empty.textContent = "No organizations yet. Sync to discover them, or add one below.";
+    list.appendChild(empty);
+    return;
+  }
+  for (const org of orgs) {
+    const label = document.createElement("label");
+    label.className = "checkbox";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = excludedOrgs.has(org);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) excludedOrgs.add(org);
+      else excludedOrgs.delete(org);
+      renderRepositories();
+    });
+    label.append(checkbox, document.createTextNode(org));
+    list.appendChild(label);
+  }
+}
+
+function renderRepositories() {
   const list = $("repoList");
   list.replaceChildren();
   if (!knownRepos.length) {
@@ -16,23 +43,32 @@ function renderRepositories(repos) {
     return;
   }
   for (const repo of knownRepos) {
+    const covered = excludedOrgs.has(repoOwner(repo));
     const label = document.createElement("label");
     label.className = "checkbox";
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = excludedRepos.has(repo);
+    checkbox.checked = covered || excludedRepos.has(repo);
+    checkbox.disabled = covered; // the excluded organization already covers it
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) excludedRepos.add(repo);
       else excludedRepos.delete(repo);
     });
-    label.append(checkbox, document.createTextNode(repo));
+    label.append(checkbox, document.createTextNode(covered ? `${repo} — organization excluded` : repo));
     list.appendChild(label);
   }
+}
+
+function refreshRepositories(repos = []) {
+  knownRepos = repositoryNames([...knownRepos, ...repos, ...excludedRepos]);
+  renderOrganizations();
+  renderRepositories();
 }
 
 async function loadConfig() {
   const cfg = await getConfig();
   excludedRepos = new Set(cfg.excludes);
+  excludedOrgs = new Set(cfg.excludedOrgs);
   for (const f of FIELDS) {
     const el = $(f);
     if (!el) continue;
@@ -42,11 +78,11 @@ async function loadConfig() {
       el.value = cfg[f];
     }
   }
-  renderRepositories(cfg.excludes);
+  refreshRepositories(cfg.excludes);
   try {
     const result = await chrome.runtime.sendMessage({ type: "remember-repositories", repos: cfg.excludes });
     if (!result?.ok) throw new Error(result?.error || "Could not load saved repositories.");
-    renderRepositories(result.repos);
+    refreshRepositories(result.repos);
   } catch (err) {
     $("repoError").textContent = String(err?.message || err);
   }
@@ -60,9 +96,16 @@ async function saveConfig() {
     if (el.type === "checkbox") cfg[f] = el.checked;
     else cfg[f] = el.value.trim();
   }
-  cfg.repoExcludes = repositoryNames([...excludedRepos]).join("\n");
+  // Repos already covered by an excluded organization don't need their own entry.
+  cfg.repoExcludes = repositoryNames([...excludedRepos])
+    .filter((repo) => !excludedOrgs.has(repoOwner(repo)))
+    .join("\n");
+  cfg.orgExcludes = ownerNames([...excludedOrgs]).join("\n");
   if (!cfg.groupTitle) cfg.groupTitle = DEFAULT_CONFIG.groupTitle;
   await chrome.storage.local.set({ config: cfg });
+  excludedRepos = new Set(cfg.repoExcludes.split("\n").filter(Boolean));
+  excludedOrgs = new Set(cfg.orgExcludes.split("\n").filter(Boolean));
+  refreshRepositories();
   return cfg;
 }
 
@@ -79,11 +122,25 @@ $("addRepoForm").addEventListener("submit", async (event) => {
     const result = await chrome.runtime.sendMessage({ type: "remember-repositories", repos: [repo] });
     if (!result?.ok) throw new Error(result?.error || "Could not save this repository.");
     excludedRepos.add(repo);
-    renderRepositories(result.repos);
+    refreshRepositories(result.repos);
     $("newRepo").value = "";
   } catch (err) {
     $("repoError").textContent = String(err?.message || err);
   }
+});
+
+$("addOrgForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  $("orgError").textContent = "";
+  const org = normalizeOwnerName($("newOrg").value);
+  if (!org) {
+    $("orgError").textContent = "Enter an organization name.";
+    $("newOrg").focus();
+    return;
+  }
+  excludedOrgs.add(org);
+  refreshRepositories();
+  $("newOrg").value = "";
 });
 
 function renderStatus() {
@@ -126,7 +183,7 @@ $("test").addEventListener("click", async () => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.state) renderStatus();
-  if (area === "local" && changes.knownRepos) renderRepositories(changes.knownRepos.newValue || []);
+  if (area === "local" && changes.knownRepos) refreshRepositories(changes.knownRepos.newValue || []);
 });
 
 loadConfig().then(renderStatus);

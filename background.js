@@ -3,6 +3,7 @@
 // - session-cookie fetches against github.com/pulls (JSON payload first,
 //   HTML fallback parsed in an offscreen document)
 // - session-based searches for approval, requested changes, and draft state
+// - PRs you have already approved are hidden from the folder
 // - direct review requests only (user-review-requested:@me — never team)
 // - PRs not updated within maxAgeDays are ignored
 // - optional pin-to-top, tab discarding, and newest-first ordering
@@ -81,7 +82,13 @@ function buildQuery(cfg, filter) {
     "is:pr", "is:open", "archived:false", "sort:updated-desc",
     filter || `(${PR_SEARCH_FILTERS.join(" OR ")})`,
   ];
-  for (const repo of cfg.excludes) terms.push(`-repo:${repo}`);
+  const orgs = cfg.excludedOrgs || [];
+  for (const org of orgs) terms.push(`-org:${org}`);
+  for (const repo of cfg.excludes) {
+    // A repo inside an excluded org is already covered by its -org term.
+    if (orgs.includes(repoOwner(repo))) continue;
+    terms.push(`-repo:${repo}`);
+  }
   if (cfg.maxAgeDays > 0) {
     const cutoff = new Date(Date.now() - cfg.maxAgeDays * 86400000).toISOString().slice(0, 10);
     terms.push(`updated:>=${cutoff}`);
@@ -90,6 +97,13 @@ function buildQuery(cfg, filter) {
 }
 
 // ------------------------------------------------------ review enrichment
+
+// PRs the signed-in user has already approved. /pulls has no "approved by me"
+// qualifier, so combine reviewed-by:@me with an approving review — the closest match.
+async function fetchApprovedByMe(cfg) {
+  const { items } = await fetchPullRequests(cfg, "reviewed-by:@me review:approved");
+  return new Set(items.map((pr) => pr.url));
+}
 
 async function enrichWithReviewStatus(prs, cfg) {
   const { prMeta: previous = {} } = await chrome.storage.local.get("prMeta");
@@ -263,11 +277,22 @@ async function syncOnce() {
     const staleCutoff = cfg.maxAgeDays > 0 ? Date.now() - cfg.maxAgeDays * 86400000 : 0;
 
     // Age cutoff + repository excludes.
-    const filtered = items.filter((pr) => {
-      if (cfg.excludes.includes((pr.repo || "").toLowerCase())) return false;
+    const candidates = items.filter((pr) => {
+      const repo = (pr.repo || "").toLowerCase();
+      if (cfg.excludes.includes(repo)) return false;
+      if ((cfg.excludedOrgs || []).includes(repoOwner(repo))) return false;
       if (staleCutoff && pr.updatedAt && new Date(pr.updatedAt).getTime() < staleCutoff) return false;
       return true;
     });
+
+    // Hide PRs the user already approved. A failed lookup keeps every tab.
+    let approvedByMe = new Set();
+    try {
+      approvedByMe = await fetchApprovedByMe(cfg);
+    } catch {
+      /* approval lookup failure must not remove tabs */
+    }
+    const filtered = candidates.filter((pr) => !approvedByMe.has(pr.url));
 
     await reconcileTabs(filtered, cfg);
     await saveState({ signedIn: true, lastError: null, lastSync: Date.now(), prCount: filtered.length });

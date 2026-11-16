@@ -34,10 +34,10 @@
     .repo-list { max-height: 260px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
     .repo-list .checkbox { overflow-wrap: anywhere; }
     .repo-list input { flex-shrink: 0; }
-    #addRepoForm input { flex: 1; min-width: 0; }
-    #addRepoForm button { flex-shrink: 0; }
-    #repoError { color: var(--error); font-size: 12px; }
-    #repoError:empty { display: none; }
+    #addRepoForm input, #addOrgForm input { flex: 1; min-width: 0; }
+    #addRepoForm button, #addOrgForm button { flex-shrink: 0; }
+    #repoError, #orgError { color: var(--error); font-size: 12px; }
+    #repoError:empty, #orgError:empty { display: none; }
     button {
       border: 0;
       border-radius: 6px;
@@ -59,7 +59,7 @@
 
   <section>
     <h2>Excluded repositories</h2>
-    <p class="hint">Check repositories to exclude, then click Save. Repositories found during sync stay in this list, even after their PRs close.</p>
+    <p class="hint">Check repositories to exclude, then click Save. Repositories found during sync stay in this list, even after their PRs close. Repositories owned by an excluded organization are covered automatically.</p>
     <div id="repoList" class="repo-list" role="group" aria-label="Repositories to exclude">
       <p class="hint">Loading repositories…</p>
     </div>
@@ -69,6 +69,20 @@
       <button type="submit" class="secondary">Add</button>
     </form>
     <p id="repoError" role="alert"></p>
+  </section>
+
+  <section>
+    <h2>Excluded organizations</h2>
+    <p class="hint">Check an organization to exclude every repository it owns. Repositories in an excluded organization are hidden from the folder and no longer need their own exclusion.</p>
+    <div id="orgList" class="repo-list" role="group" aria-label="Organizations to exclude">
+      <p class="hint">Loading organizations…</p>
+    </div>
+    <label for="newOrg">Add an organization to exclude</label>
+    <form id="addOrgForm" class="row">
+      <input type="text" id="newOrg" placeholder="organization" autocomplete="off" aria-describedby="orgError" required />
+      <button type="submit" class="secondary">Add</button>
+    </form>
+    <p id="orgError" role="alert"></p>
   </section>
 
   <section>

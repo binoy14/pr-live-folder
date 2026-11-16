@@ -9,6 +9,7 @@ const SYNC_DEFAULTS = {
 
 const DEFAULT_CONFIG = {
   repoExcludes: "",
+  orgExcludes: "",
   groupTitle: "Pull Requests",
   groupColor: "blue",
   collapsed: true, // applied only when the group is created
@@ -28,9 +29,24 @@ function repositoryNames(values) {
   return [...new Set(values.map(normalizeRepoName).filter(Boolean))].sort();
 }
 
+function normalizeOwnerName(value) {
+  if (typeof value !== "string") return null;
+  const owner = value.trim().toLowerCase();
+  return /^[a-z\d_-]+$/.test(owner) ? owner : null;
+}
+
+function ownerNames(values) {
+  return [...new Set(values.map(normalizeOwnerName).filter(Boolean))].sort();
+}
+
+function repoOwner(repo) {
+  return repo.split("/")[0];
+}
+
 async function getConfig() {
   const { config } = await chrome.storage.local.get("config");
   const cfg = { ...DEFAULT_CONFIG, ...(config || {}), ...SYNC_DEFAULTS };
+  cfg.excludedOrgs = ownerNames((cfg.orgExcludes || "").split("\n"));
   cfg.excludes = repositoryNames((cfg.repoExcludes || "").split("\n"));
   return cfg;
 }
