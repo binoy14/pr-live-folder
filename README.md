@@ -26,6 +26,7 @@ own React frontend data (a JSON payload), the same technique Zen Browser uses in
 3. If GitHub serves the old HTML UI instead, the extension parses it in an offscreen document
    (MV3 service workers can't use DOMParser).
 4. A tab is created for each new open PR and removed when its PR closes, merges, or is filtered out.
+   The tab you are currently viewing is left alone; it closes on a later sync once you navigate away.
    Failed requests and unrecognized responses leave existing tabs in place.
 
 PRs you created and direct review requests are included automatically, using these filters:
@@ -81,8 +82,9 @@ Requires Chrome 116 or later. No build step or dependency installation is needed
    in your active window. Expand it to open a PR, or use the extension popup to see its status.
 
 The extension manages tabs inside this group. It can close PR tabs when they close, merge,
-fall outside the 30-day update window, or exceed the 30-tab limit. Avoid using managed PR tabs
-for unfinished work you need to keep open.
+fall outside the 30-day update window, or exceed the 30-tab limit. It never closes the tab you
+are currently viewing; that tab closes on a later sync after you navigate away. Avoid using
+managed PR tabs for unfinished work you need to keep open.
 
 ### Update or disable
 

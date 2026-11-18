@@ -407,10 +407,16 @@ async function updateManagedTabs(prs, cfg) {
 
   // 2. Remove tabs whose PR is closed/merged, filtered out, or beyond maxTabs.
   const seen = new Set();
-  // Retain the active tab when a previous version created duplicates.
+  // Process the active tab first so it survives duplicate cleanup, and never
+  // close the tab the user is currently viewing. It closes on a later sync once
+  // the user navigates away and its PR still isn't in the filtered set.
   for (const t of groupTabs.slice().sort((a, b) => Number(b.active) - Number(a.active))) {
     const key = normalizePrUrl(t.pendingUrl || t.url);
     if (!key) continue; // leave unrelated tabs the user put in the group alone
+    if (t.active) {
+      seen.add(key);
+      continue;
+    }
     if (!keepUrls.has(key) || seen.has(key)) {
       try {
         await chrome.tabs.remove(t.id);
